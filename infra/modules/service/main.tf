@@ -437,7 +437,27 @@ resource "aws_iam_role" "codedeploy" {
 
 resource "aws_iam_role_policy_attachment" "codedeploy" {
   role       = aws_iam_role.codedeploy.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSCodeDeployRoleForECS"
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
+}
+
+resource "aws_iam_role_policy" "codedeploy_passrole" {
+  name = "${var.name_prefix}-codedeploy-passrole"
+  role = aws_iam_role.codedeploy.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole"
+        ]
+        Resource = [
+          aws_iam_role.ecs_execution.arn,
+          aws_iam_role.task.arn,
+        ]
+      }
+    ]
+  })
 }
 
 resource "aws_codedeploy_app" "this" {
@@ -504,4 +524,9 @@ resource "aws_codedeploy_deployment_group" "this" {
       }
     }
   }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.codedeploy,
+    aws_iam_role_policy.codedeploy_passrole,
+  ]
 }
