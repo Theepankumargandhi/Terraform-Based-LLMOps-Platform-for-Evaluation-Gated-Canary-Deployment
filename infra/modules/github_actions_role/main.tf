@@ -66,7 +66,9 @@ resource "aws_iam_role_policy" "this" {
         Action = [
           "codedeploy:CreateDeployment",
           "codedeploy:GetDeployment",
-          "codedeploy:GetDeploymentConfig"
+          "codedeploy:GetDeploymentConfig",
+          "codedeploy:GetApplicationRevision",
+          "codedeploy:RegisterApplicationRevision"
         ]
         Resource = "*"
       },
