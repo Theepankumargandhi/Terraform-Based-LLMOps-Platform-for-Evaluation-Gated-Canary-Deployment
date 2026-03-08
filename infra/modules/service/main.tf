@@ -458,7 +458,10 @@ resource "aws_codedeploy_deployment_group" "this" {
 
   alarm_configuration {
     enabled = true
-    alarms  = [aws_cloudwatch_metric_alarm.target_5xx.name, aws_cloudwatch_metric_alarm.target_latency.name]
+    alarms  = [
+      aws_cloudwatch_metric_alarm.target_5xx.alarm_name,
+      aws_cloudwatch_metric_alarm.target_latency.alarm_name,
+    ]
   }
 
   deployment_style {
