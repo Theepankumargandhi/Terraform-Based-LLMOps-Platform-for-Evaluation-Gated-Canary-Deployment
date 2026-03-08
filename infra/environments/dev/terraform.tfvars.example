@@ -1,0 +1,8 @@
+aws_region          = "us-east-1"
+project_name        = "llmops-canary-platform"
+environment         = "dev"
+image_tag           = "latest"
+github_repository   = "your-org/your-repo"
+github_oidc_provider_arn = "arn:aws:iam::123456789012:oidc-provider/token.actions.githubusercontent.com"
+openai_secret_arn   = "arn:aws:secretsmanager:us-east-1:123456789012:secret:openai-api-key"
+langsmith_secret_arn = "arn:aws:secretsmanager:us-east-1:123456789012:secret:langsmith-api-key"

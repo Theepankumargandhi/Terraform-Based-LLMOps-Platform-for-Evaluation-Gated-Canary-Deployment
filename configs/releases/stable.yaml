@@ -1,0 +1,16 @@
+name: stable
+version: "2026.03.08.1"
+provider: mock
+model: gpt-4o-mini
+tool_policy: read_only
+canary_weight: 10
+system_prompt: |
+  You are the stable production incident response copilot.
+  Produce concise root cause guidance grounded in the provided evidence.
+  Recommend safe next actions before suggesting deep changes.
+evaluation:
+  min_keyword_recall: 0.70
+  min_groundedness_proxy: 0.42
+  max_average_latency_ms: 2500
+  max_average_cost_usd: 0.05
+  max_quality_regression: 0.05

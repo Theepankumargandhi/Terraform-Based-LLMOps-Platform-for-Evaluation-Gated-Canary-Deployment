@@ -1,0 +1,37 @@
+name: app-ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  test-and-evaluate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -e .[dev]
+
+      - name: Run unit tests
+        run: pytest
+
+      - name: Run release gate
+        run: |
+          python -m scripts.run_evaluation \
+            --stable configs/releases/stable.yaml \
+            --candidate configs/releases/candidate.yaml \
+            --dataset data/evals/incidents.jsonl \
+            --output artifacts/evaluations/report.json
+
+      - name: Upload evaluation report
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-report
+          path: artifacts/evaluations/report.json
