@@ -1,6 +1,6 @@
 # Terraform-Based LLMOps Canary Platform
 
-This project is a production-style **LLMOps platform** rather than just a single GenAI app. It deploys a sample `LangGraph` incident assistant behind an AWS ECS service and adds the parts that make GenAI systems production-ready:
+This project is a production-style **LLMOps platform** rather than just a single GenAI app. It deploys a sample `LangGraph` incident assistant behind an AWS ECS service and adds the controls that make GenAI systems production-ready:
 
 - offline evaluation gates before release
 - canary deployment for stable vs candidate versions
@@ -25,17 +25,44 @@ The sample workload is an **incident response copilot**, but the main asset is t
 
 ```mermaid
 flowchart LR
-    GH[GitHub Actions] --> Eval[Offline Evaluation Gate]
-    Eval -->|pass| ECR[ECR Image]
-    ECR --> CD[CodeDeploy ECS Canary]
-    CD --> ECS[ECS Fargate Service]
-    ECS --> APP[FastAPI + LangGraph]
-    APP --> S3[S3 Eval Artifacts]
-    APP --> RDS[(Postgres Metadata)]
-    APP --> OBS[CloudWatch / LangSmith]
-    ALB[ALB] --> ECS
-    CW[CloudWatch Alarms] --> CD
-    CD -->|rollback| ECS
+    DEV[Developer] --> ST[Streamlit Demo]
+    ST -->|Local mode| SVC[LLMOpsService]
+    ST -->|Remote mode| ALB[Application Load Balancer]
+
+    subgraph Delivery
+        GH[GitHub Actions]
+        EVAL[Offline Evaluation Gate]
+        IMG[Docker Image]
+        ECR[ECR Repository]
+        CD[CodeDeploy Canary Deployment]
+    end
+
+    subgraph Runtime
+        ALB --> ECS[ECS Fargate Service]
+        ECS --> API[FastAPI + LangGraph]
+        API --> REL[Stable and Candidate Release Configs]
+        API --> METRICS[Runtime Telemetry and Feedback]
+        CW[CloudWatch Alarms] --> CD
+    end
+
+    subgraph Infra
+        TF[Terraform]
+        S3[S3 Artifact Bucket]
+        RDS[(Postgres Metadata)]
+        IAM[IAM and OIDC]
+    end
+
+    GH --> EVAL
+    EVAL -->|pass| IMG --> ECR --> CD --> ECS
+    TF --> ALB
+    TF --> ECS
+    TF --> S3
+    TF --> RDS
+    TF --> IAM
+    API --> S3
+    API --> RDS
+    API --> METRICS
+    CD -->|rollback on alarm| ECS
 ```
 
 ## Repository Layout
@@ -60,7 +87,7 @@ flowchart LR
 1. Install dependencies:
 
    ```bash
-   python -m pip install -e .[dev]
+   python -m pip install -e .[dev,demo]
    ```
 
 2. Run the API locally:
@@ -69,7 +96,18 @@ flowchart LR
    python -m llmops_platform.main
    ```
 
-3. Run the offline evaluation gate:
+3. Launch the Streamlit demo UI:
+
+   ```bash
+   streamlit run streamlit_app.py
+   ```
+
+   The demo supports two modes:
+
+   - `Local service`: runs the same `LLMOpsService` in-process
+   - `Remote API`: points Streamlit at a deployed ALB endpoint such as `http://<alb-dns-name>`
+
+4. Run the offline evaluation gate:
 
    ```bash
    python -m scripts.run_evaluation \
@@ -79,7 +117,7 @@ flowchart LR
      --output artifacts/evaluations/latest.json
    ```
 
-4. Example request:
+5. Example request:
 
    ```bash
    curl -X POST http://localhost:8080/v1/respond \
@@ -96,6 +134,20 @@ flowchart LR
          "runbook_excerpt": "If latency spikes after a deploy, rollback first and validate downstream saturation."
        }
      }'
+   ```
+
+6. Optional: point the Streamlit UI at your deployed service:
+
+   ```bash
+   export STREAMLIT_API_BASE_URL=http://your-alb-dns-name
+   streamlit run streamlit_app.py
+   ```
+
+   On Windows `cmd`, use:
+
+   ```bat
+   set STREAMLIT_API_BASE_URL=http://your-alb-dns-name
+   streamlit run streamlit_app.py
    ```
 
 ## Release Model
@@ -137,6 +189,16 @@ The ECS service uses **CodeDeploy** with `CodeDeployDefault.ECSCanary10Percent5M
    - renders a CodeDeploy AppSpec
    - creates a CodeDeploy deployment
 
+## Demo Flow
+
+Use the Streamlit app for fast walkthroughs:
+
+1. start the FastAPI service locally or keep the app in `Local service` mode
+2. open `streamlit_app.py`
+3. load a sample incident or enter your own context
+4. compare `stable` vs `candidate` behavior
+5. capture operator feedback from the same UI
+
 ## Environment Variables
 
 | Variable | Purpose |
@@ -149,9 +211,11 @@ The ECS service uses **CodeDeploy** with `CodeDeployDefault.ECSCanary10Percent5M
 | `OPENAI_API_KEY` | optional, enables OpenAI-backed responder |
 | `LANGSMITH_API_KEY` | optional tracing integration |
 | `METRICS_OUTPUT_PATH` | local JSONL event log |
+| `STREAMLIT_API_BASE_URL` | optional default remote endpoint for the Streamlit demo |
 
 ## Notes
 
 - The app defaults to a deterministic mock responder so the platform can be tested without external model calls.
 - Swap to `provider: openai` in the release config to use a real LLM.
-- Terraform files are ready for AWS deployment but were not applied from this environment.
+- `terraform.tfvars` is intentionally ignored so local AWS account details and secret ARNs are not committed.
+- The `dev` environment can be applied and destroyed from `infra/environments/dev` when you want a short-lived AWS demo.

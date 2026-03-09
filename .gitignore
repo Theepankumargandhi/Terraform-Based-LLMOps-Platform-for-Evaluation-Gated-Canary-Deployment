@@ -2,8 +2,11 @@
 .terraform.lock.hcl
 *.tfstate
 *.tfstate.*
+*.tfplan
+tfplan
 *.tfvars
 *.tfvars.json
+delete-versions.json
 crash.log
 override.tf
 override.tf.json
