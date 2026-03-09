@@ -68,18 +68,18 @@ flowchart LR
 ## Repository Layout
 
 ```text
-.
+
 |-- configs/
-|   `-- releases/
+|   -- releases/
 |-- data/
-|   `-- evals/
+|   -- evals/
 |-- deploy/
 |-- infra/
 |   |-- environments/dev/
-|   `-- modules/
+|   -- modules/
 |-- scripts/
 |-- src/llmops_platform/
-`-- tests/
+|-- tests/
 ```
 
 ## Local Workflow
